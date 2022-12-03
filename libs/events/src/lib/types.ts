@@ -1,4 +1,4 @@
-import type { Socket } from 'socket.io';
+import type { Namespace, Socket } from 'socket.io';
 
 export type PlayerDirection = 'north' | 'south' | 'west' | 'east';
 export type LandStatus = null | 'claimed' | 'contesting';
@@ -108,4 +108,4 @@ export type BandeirantesEvents<EventType extends EventTypes> =
 export type BandeirantesSocket = Socket<
   BandeirantesEvents<'listen'>,
   BandeirantesEvents<'emit'>
-> & Socket
+> & Socket;
