@@ -1,102 +1,134 @@
+import {
+  emitEvent, Game, Land, Room
+} from '@bandeirantes/events';
 import { createServer } from 'node:http';
-import { Server, type Socket, type Namespace } from 'socket.io';
+import { setInterval } from "node:timers/promises";
+import { Server, type Namespace } from 'socket.io';
 import { logger } from './utils/logger';
-import { Room, emitEvent, onEvent, Game, PlayerGame, Land } from '@bandeirantes/events';
-import { joinRoomError } from "./errors/joinRoomError"
+
+interface RoomSocketConstructor extends Omit<Omit<Room, 'gameId'>, 'hasPassword'> {
+  password: string | null
+  size: number
+}
 
 class RoomSocket extends Room {
+  private socketRoom: Namespace;
+  readonly size: number
+  game: Game;
+  password: string | null
+  interval: AsyncIterable<() => void>
 
-  private socketRoom: Namespace
-  private game: Game
+  constructor(data: RoomSocketConstructor, io: Server) {
+    super();
 
-  constructor(data: Omit<Room, "gameId">, io: Server){
-    super()
+    this.id = data.id;
+    this.name = data.name;
+    this.password = data.password;
+    this.maxPlayers = 5;
+    this.playerCount = 0;
+    this.size = data.size
+    
+    const game = new Game();
+    game.id = '0';
+    game.lands = this.generateSquareBoard(data.size);
+    game.players = [];
+    game.status = 'waiting';
+    game.gameOverTime = new Date();
 
-    this.id = data.id
-    this.name = data.name
-    this.password = data.password
-    this.maxPlayers = 5
-    this.playerCount = 0
+    this.game = game;
+    this.socketRoom = io.of(`/room/${this.id}`);
 
-    const game = new Game()
-    game.id = "0"
-    game.lands = this.generateSquareBoard(10)
-    game.players = []
-    game.status = "waiting"
-    game.gameOverTime = new Date()
-
-    this.game = game
-    this.socketRoom = io.of(`/room/${this.id}`)
+    this.listenEvents()
   }
 
   private generateSquareBoard(size: number): Array<Array<Land>> {
-    const board: Array<Array<Land>> = []
+    const board: Array<Array<Land>> = [];
 
-    for (let i = 0; i < size; i++){
-      const line:Array<Land> = []
+    for (let i = 0; i < size; i++) {
+      const line: Array<Land> = [];
 
-      for (let i2 = 0; i2 < size; i2++){
+      for (let i2 = 0; i2 < size; i2++) {
         line.push({
           id: `${i}-${i2}`,
           owner: null,
-          status: "contesting"
-        })  
-      }
-
-      board.push(line)
-    }
-    
-    return board
-  }
-
-  tick(){
-    for(let i = 0; i < this.game.players.length; i++ ){
-
-      this.game.players
-
-    }
-  }
-
-  listenEvents(){
-    this.socketRoom.on("connection", (socket) => {
-      if(this.password && this.password !== socket.handshake.auth.password) {
-        emitEvent("join_room_response", socket, {
-          message: "Invalid password",
-          succeeded: false
+          status: null,
         })
-        
-        return socket.disconnect()
       }
 
-      emitEvent("join_room_response", socket, {
-        message: `You entered room:${this.name}`,
-        succeeded: false
-      })
+      board.push(line);
+    }
 
-      logger.info(`Room ${this.name}: User ${socket.id} entered into room.`)
-    })
+    return board;
+  }
 
-    // onEvent("player_movement", this.socketRoom as any, (arg) => {
-      
-    // })
+  createInterval(ticksPerSecond: number) {
+    const ms = ticksPerSecond / 1000
+
+    this.interval = setInterval(ms, this.tickFunction)
+  }
+
+  tickFunction() {
+    for (let i = 0; i < this.game.players.length; i++) {
+      this.game.players[i].direction
+    }
+
+    setTimeout
+  }
+
+  listenEvents() {
+    this.socketRoom.on('connection', (socket) => {
+      if (this.password && this.password !== socket.handshake.auth.password) {
+        emitEvent('join_room_response', socket, {
+          message: 'Invalid password',
+          succeeded: false,
+        });
+
+        return socket.disconnect(true);
+      }
+
+      emitEvent('join_room_response', socket, {
+        message: `You entered room:"${this.name}"`,
+        succeeded: true,
+      });
+
+      logger.info(`Room ${this.name}: User ${socket.id} entered into room.`);
+    });
   }
 }
 
+const httpServer = createServer((req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*")
 
-
-
-const httpServer = createServer();
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*"
+  if(!req.url.match(/\/rooms$/) || req.method !== "GET") {
+    res.statusCode = 404
+    return res.end("Not found")
   }
+
+  res.setHeader('Content-Type', 'application/json')
+
+  const roomsList: Array<Room> = rooms.map( r => {
+    return {
+      id: r.id,
+      name: r.name,
+      hasPassword: !!r.password,
+      maxPlayers: r.maxPlayers,
+      playerCount: r.game.players.length
+    }
+  })
+
+  res.end(JSON.stringify(roomsList))
 });
 
-
+const io = new Server(httpServer, {
+    cors: {
+      origin: "*"
+    }
+  },
+);
 
 io.on('connection', (socket) => {
   logger.info(`Socket connection with id:${socket.id}`);
-  onEvent('get_room_list', socket, () => emitEvent('room_list', socket, rooms));
+  // onEvent('get_room_list', socket, () => emitEvent('room_list', socket, rooms));
 
   // onEvent('join_room', socket, (roomCredentials) => {
   //   let roomIndex: number, gameIndex: number
@@ -106,7 +138,7 @@ io.on('connection', (socket) => {
   //     return r.id === roomCredentials.id
   //   });
   //   if (!foundRoom) return joinRoomError("roomId", socket)
-    
+
   //   const foundGame = games.find((g, i) => {
   //     gameIndex = i
   //     return g.id === foundRoom.gameId
@@ -116,7 +148,7 @@ io.on('connection', (socket) => {
   //   if(foundGame.players.length >= foundRoom.maxPlayers) {
   //     return joinRoomError("playerLimit", socket)
   //   }
-    
+
   //   if (foundRoom.password && foundRoom.password !== roomCredentials.password) {
   //     return joinRoomError("password", socket)
   //   }
@@ -139,17 +171,31 @@ io.on('connection', (socket) => {
   //     succeeded: true
   //   })
   // });
-
 });
 
 const rooms: Array<RoomSocket> = [
-  new RoomSocket({
-    id: "1",
-    maxPlayers: 5,
-    name: "Main Room",
-    password: null,
-    playerCount: 0
-  }, io )
+  new RoomSocket(
+    {
+      id: '1',
+      maxPlayers: 5,
+      name: 'Main Room',
+      password: null,
+      playerCount: 0,
+      size:10
+    },
+    io
+  ),
+  new RoomSocket(
+    {
+      id: '2',
+      maxPlayers: 5,
+      name: 'Com senha',
+      password: "senha",
+      playerCount: 0,
+      size:10
+    },
+    io
+  ),
 ];
 
 const PORT = process.env.PORT || 3000;

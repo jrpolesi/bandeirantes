@@ -1,4 +1,4 @@
-import type { Namespace, Socket } from 'socket.io';
+import type { Socket } from 'socket.io';
 
 export type PlayerDirection = 'north' | 'south' | 'west' | 'east';
 export type LandStatus = null | 'claimed' | 'contesting';
@@ -41,9 +41,8 @@ export class Game {
 
 export class Room {
   id: string;
-  gameId: Game['id'];
   name: string;
-  password: null | string;
+  hasPassword: boolean;
   maxPlayers: number;
   playerCount: number;
 }
@@ -69,10 +68,6 @@ type EventTypes = 'emit' | 'listen';
 export interface EmitEvents {
   update_game: (game: Game) => void;
 
-  get_room_list: () => void;
-
-  room_list: (roomList: Array<Room>) => void;
-
   join_room: (payload: JoinRoom) => void;
 
   game_error: (error: GameError) => void;
@@ -86,10 +81,6 @@ export interface EmitEvents {
 
 export interface ListenEvents {
   update_game: (updatedGame: Game) => any;
-
-  get_room_list: () => any;
-
-  room_list: (roomList: Room[]) => any;
 
   join_room: (room: JoinRoom) => any;
 
@@ -108,4 +99,5 @@ export type BandeirantesEvents<EventType extends EventTypes> =
 export type BandeirantesSocket = Socket<
   BandeirantesEvents<'listen'>,
   BandeirantesEvents<'emit'>
-> & Socket;
+> &
+  Socket;
