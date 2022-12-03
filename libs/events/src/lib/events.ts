@@ -1,9 +1,9 @@
-import type { BandeirantesEvents, BandeirantesSocket } from '../@types';
+import type { BandeirantesEvents, BandeirantesSocket } from './types';
 
 export function emitEvent<T extends keyof BandeirantesEvents<'emit'>>(
   eventName: T,
   socket: BandeirantesSocket,
-  payload: Parameters<BandeirantesEvents<'emit'>[T]>
+  ...payload: Parameters<BandeirantesEvents<'emit'>[T]>
 ) {
   return socket.emit(eventName, ...payload);
 }

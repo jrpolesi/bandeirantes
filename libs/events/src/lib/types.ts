@@ -35,7 +35,7 @@ export class Game {
   id: string;
   status: GameStatus;
   players: Array<PlayerGame>;
-  lands: Array<Land>;
+  lands: Array<Array<Land>>;
   gameOverTime: Date;
 }
 
@@ -50,7 +50,7 @@ export class Room {
 
 export type JoinRoom = {
   player: PlayerCredentials;
-  roomId: string;
+  id: string;
   password: null | string;
 };
 
@@ -60,11 +60,10 @@ export type PlayerMovement = {
 };
 
 export type GameError = {
-  code: number;
+  code: string;
   message: string;
 };
 
-type VoidSyncOrAsync = void | Promise<void>;
 type EventTypes = 'emit' | 'listen';
 
 export interface EmitEvents {
@@ -86,21 +85,21 @@ export interface EmitEvents {
 }
 
 export interface ListenEvents {
-  update_game: (updatedGame: Game) => VoidSyncOrAsync;
+  update_game: (updatedGame: Game) => any;
 
-  get_room_list: (roomList: Room[]) => VoidSyncOrAsync;
+  get_room_list: () => any;
 
-  room_list: () => VoidSyncOrAsync;
+  room_list: (roomList: Room[]) => any;
 
-  join_room: (room: JoinRoom) => VoidSyncOrAsync;
+  join_room: (room: JoinRoom) => any;
 
-  game_error: (error: GameError) => VoidSyncOrAsync;
+  game_error: (error: GameError) => any;
 
-  join_room_response: (response: JoinRoomResponse) => VoidSyncOrAsync;
+  join_room_response: (response: JoinRoomResponse) => any;
 
-  finished_game: (isFinished: boolean) => VoidSyncOrAsync;
+  finished_game: (isFinished: boolean) => any;
 
-  player_movement: (playerMovement: PlayerMovement) => VoidSyncOrAsync;
+  player_movement: (playerMovement: PlayerMovement) => any;
 }
 
 export type BandeirantesEvents<EventType extends EventTypes> =
@@ -109,4 +108,4 @@ export type BandeirantesEvents<EventType extends EventTypes> =
 export type BandeirantesSocket = Socket<
   BandeirantesEvents<'listen'>,
   BandeirantesEvents<'emit'>
->;
+> & Socket
