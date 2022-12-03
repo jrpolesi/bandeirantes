@@ -90,6 +90,10 @@ export function GameProvider({ children }: PropsWithChildren<{}>) {
         socketEvents.onRoomList((rooms) => {
           setRoomList(rooms);
         });
+
+        socketEvents.onUpdateGame((game) => {
+          setGame(game)
+        })
       });
     }
   }, [socket]);
