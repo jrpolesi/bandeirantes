@@ -1,29 +1,21 @@
-import { Game } from '@bandeirantes/events';
-import { Table } from './components';
-import { GameProvider } from './contexts';
-import { Lobby } from './pages';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { far } from '@fortawesome/free-regular-svg-icons';
+import { fas } from '@fortawesome/free-solid-svg-icons';
+import { useGameContext } from './contexts';
+import { Game as GamePage, Lobby } from './pages';
+import { GlobalStyle, ResetCSS } from './styles';
 
-const game: Game = {
-  lands: [
-    [
-      { id: '1', owner: { color: 'blue' } as any, status: 'claimed' },
-      { id: '2', owner: { color: 'blue' } as any, status: 'claimed' },
-      { id: '3', owner: { color: 'blue' } as any, status: 'claimed' },
-    ],
-    [
-      { id: '1', owner: null, status: 'claimed' },
-      { id: '2', owner: null, status: 'claimed' },
-      { id: '3', owner: null, status: 'claimed' },
-    ],
-  ],
-} as any;
+library.add(fas, far);
 
 export function App() {
+  const { isConnected, game } = useGameContext();
+
   return (
-    <GameProvider>
-      <Table game={game} />
-      <Lobby />
-    </GameProvider>
+    <>
+      <ResetCSS />
+      <GlobalStyle />
+      {isConnected ? <GamePage game={game} /> : <Lobby />}
+    </>
   );
 }
 

@@ -5,30 +5,24 @@ import {
   JoinRoom,
   ListenEvents,
   onEvent,
+  PlayerDirection,
   PlayerMovement,
-  Room,
 } from '@bandeirantes/events';
 import {
   createContext,
   PropsWithChildren,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
-import { io } from 'socket.io-client';
 
-export const GameContext = createContext<{ rooms: Room[] }>({
-  rooms: [],
-});
+export const GameContext = createContext<any>({});
 
 class GameSocketEvents {
   constructor(private socket: BandeirantesSocket) {}
 
   // Emitters events
-  emitGetRoomsList() {
-    emitEvent('get_room_list', this.socket);
-  }
-
   emitJoinRoom(joinRoom: JoinRoom) {
     emitEvent('join_room', this.socket, joinRoom);
   }
@@ -42,10 +36,6 @@ class GameSocketEvents {
     this.socket.on('connect', () => {
       registerListeners();
     });
-  }
-
-  onRoomList(listener: ListenEvents['room_list']) {
-    onEvent('room_list', this.socket, listener);
   }
 
   onJoinRoomResponse(listener: ListenEvents['join_room_response']) {
@@ -67,39 +57,45 @@ class GameSocketEvents {
 
 export function GameProvider({ children }: PropsWithChildren<{}>) {
   const [socket, setSocket] = useState<BandeirantesSocket>();
-  const [roomList, setRoomList] = useState<Array<Room>>([]);
   const [game, setGame] = useState<Game>();
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+
+  const socketEvents = useMemo(
+    () => socket && new GameSocketEvents(socket),
+    [socket]
+  );
 
   useEffect(() => {
-    if (!socket) {
-      const newSocket = io('http://localhost:3000');
-
-      setSocket(newSocket as any);
-    }
-  });
-
-  useEffect(() => {
-    if (socket) {
-      const socketEvents = new GameSocketEvents(socket);
-
+    if (socketEvents) {
       socketEvents.onConnect(() => {
         console.log(socket);
 
-        socketEvents.emitGetRoomsList();
-
-        socketEvents.onRoomList((rooms) => {
-          setRoomList(rooms);
+        socketEvents.onJoinRoomResponse((response) => {
+          setIsConnected(response.succeeded);
         });
 
         socketEvents.onUpdateGame((game) => {
-          setGame(game)
-        })
+          setGame(game);
+        });
       });
     }
-  }, [socket]);
+  }, [socketEvents]);
+
+  function saveSocket(socket: BandeirantesSocket) {
+    setSocket(socket);
+  }
+
+  function changeDirection(direction: PlayerDirection | null) {
+    socketEvents?.emitPlayerMovement({
+      direction,
+      isMoving: !!direction,
+    });
+  }
 
   return (
-    <GameContext.Provider value={{ rooms: roomList }}>
+    <GameContext.Provider
+      value={{ game, saveSocket, isConnected, setIsConnected, changeDirection }}
+    >
       {children}
     </GameContext.Provider>
   );

@@ -8,13 +8,15 @@ export type TableLineProps = {
 
 const StyledTableLine = styled.div`
   display: flex;
-`
+`;
 
 export function TableLine({ lands }: TableLineProps) {
   return (
     <StyledTableLine>
       {lands.map((land) => (
-        <Block color={land.owner?.color ?? 'red'}>oi</Block>
+        <Block key={land.id} color={land.owner?.color ?? 'red'}>
+          oi
+        </Block>
       ))}
     </StyledTableLine>
   );

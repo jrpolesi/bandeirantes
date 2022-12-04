@@ -54,7 +54,7 @@ export type JoinRoom = {
 };
 
 export type PlayerMovement = {
-  direction: PlayerDirection;
+  direction: PlayerDirection | null;
   isMoving: boolean;
 };
 
