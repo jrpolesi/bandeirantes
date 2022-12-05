@@ -35,21 +35,20 @@ export class GameTable extends Game {
   }
 
   private contestLand(
-    playerIndex: number,
+    player: Player,
     landCoords: { x: number; y: number }
   ) {
-    const player = this.players[playerIndex];
     const land = this.lands[landCoords.y][landCoords.x];
 
     if (land.owner && land.owner.id === player.id && land.status !== null)
       return;
 
     if (land.owner && land.owner.id !== player.id) {
-      this.lands[landCoords.y][landCoords.x].previousOwnerId = land.owner.id;
+      land.previousOwnerId = land.owner.id;
     }
 
-    this.lands[landCoords.y][landCoords.x].owner = player;
-    this.lands[landCoords.y][landCoords.x].status = 'contesting';
+    land.owner = player;
+    land.status = 'contesting';
   }
 
   changeGameStatus(newStatus: GameStatus) {
@@ -107,23 +106,22 @@ export class GameTable extends Game {
   }
 
   onPlayerMovement(socket: Socket, { direction, isMoving }: PlayerMovement) {
-    const playerIndex = this.players.findIndex((p) => p.id === socket.id);
-    const currentDirection = this.players[playerIndex].direction;
+    const player = this.players.find((p) => p.id === socket.id);
 
-    if (direction === currentDirection) return;
+    if (direction === player.direction) return;
 
     if (typeof isMoving === 'boolean') {
-      this.players[playerIndex].isMoving = isMoving;
+      player.isMoving = isMoving;
     }
 
     if (!direction) return;
-    if (currentDirection === 'north' && direction === 'south') return;
-    if (currentDirection === 'east' && direction === 'west') return;
+    if (player.direction === 'north' && direction === 'south') return;
+    if (player.direction === 'east' && direction === 'west') return;
 
-    this.players[playerIndex].direction = direction;
+    player.direction = direction;
 
-    const nextPos = this.getNewPosition(playerIndex);
-    const currentPos = this.players[playerIndex].position;
+    const nextPos = this.getNewPosition(player);
+    const currentPos = player.position;
 
     if (nextPos.y === currentPos.y && nextPos.x === currentPos.x) {
       return emitEvent('game_error', socket, {
@@ -141,8 +139,8 @@ export class GameTable extends Game {
     });
   }
 
-  getNewPosition(playerIndex: number) {
-    const { position, direction } = this.players[playerIndex];
+  getNewPosition(player: Player) {
+    const { position, direction } = player;
 
     const newPosition = { ...position };
 
@@ -163,8 +161,7 @@ export class GameTable extends Game {
     return newPosition;
   }
 
-  claimInitialLands(playerId: string, coords: { x: number; y: number }) {
-    const player = this.players.find((p) => p.id === playerId);
+  claimInitialLands(player: Player, coords: { x: number; y: number }) {
     for (let i = coords.y - 1; i <= coords.y + 1; i++) {
       for (let i2 = coords.x - 1; i2 <= coords.x + 1; i2++) {
         this.lands[i][i2].owner = player;
@@ -174,27 +171,26 @@ export class GameTable extends Game {
   }
 
   private tickFunction() {
-    for (let i = 0; i < this.players.length; i++) {
-      if (!this.players[i].isMoving) continue;
+    for (const player of this.players) {
+      if (!player.isMoving) continue;
 
-      const currentPos = this.players[i].position;
-      const newPos = this.getNewPosition(i);
+      const currentPos = player.position;
+      const newPos = this.getNewPosition(player);
 
       if (currentPos.x === newPos.x && currentPos.y === newPos.y) continue;
 
       const nextLand = this.getLandFromPosition(newPos);
 
       if (nextLand.owner && nextLand.status === 'contesting') {
-        const nextLandOwnerId = nextLand.owner.id
+        const target = this.players.find(p => p.id === nextLand.owner.id)
         
-        this.killPlayer(this.players[i], nextLand.owner);
+        this.killPlayer(player, target);
 
-        if (this.players[i].id === nextLandOwnerId) continue 
-
+        if (player.id === target.id) continue 
       }
 
-      this.contestLand(i, currentPos);
-      this.players[i].position = newPos;
+      this.contestLand(player, currentPos);
+      player.position = newPos;
     }
 
     this.endGameFunction();
@@ -208,72 +204,70 @@ export class GameTable extends Game {
     });
   }
 
-  resetPlayerTakenLands(playerIndex: number) {
-    const playerId = this.players[playerIndex].id;
-
+  resetPlayerTakenLands(player: Player) {
     for (let i = 0; i < this.lands.length; i++) {
       for (let i2 = 0; i2 < this.lands[i].length; i2++) {
-        if (this.lands[i][i2].owner?.id === playerId) {
-          if (this.lands[i][i2].previousOwnerId) {
+        const land = this.lands[i][i2]
+        
+        if (land.owner?.id === player.id) {
+          if (land.previousOwnerId) {
             const previousOwner = this.players.find(
-              (p) => p.id === this.lands[i][i2].previousOwnerId
+              (p) => p.id === land.previousOwnerId
             );
 
-            this.lands[i][i2].owner = previousOwner;
-            this.lands[i][i2].status = 'claimed';
-            this.lands[i][i2].previousOwnerId = null;
+            land.owner = previousOwner;
+            land.status = 'claimed';
+            land.previousOwnerId = null;
           } else {
-            this.lands[i][i2].owner = null;
-            this.lands[i][i2].status = null;
-            this.lands[i][i2].previousOwnerId = null;
+            land.owner = null;
+            land.status = null;
+            land.previousOwnerId = null;
           }
         }
       }
     }
   }
 
-  private killPlayer(killer: Player, target: Bandeirante) {
-    for (let i = 0; i < this.lands.length; i++) {
-      for (let i2 = 0; i2 < this.lands[i].length; i2++) {
-        if (this.lands[i][i2].owner?.id !== target.id) continue;
+  private killPlayer(killer: Player, target: Player) {
+    for (const landY of this.lands) {
+      for (const land of landY) {
+        if (land.owner?.id !== target.id) continue;
 
-        if (this.lands[i][i2].status === 'contesting') {
-          if (this.lands[i][i2].previousOwnerId) {
+        if (land.status === 'contesting') {
+          if (land.previousOwnerId) {
             const previousOwner = this.players.find(
-              (p) => p.id === this.lands[i][i2].previousOwnerId
+              (p) => p.id === land.previousOwnerId
             );
 
-            this.lands[i][i2].owner = previousOwner;
-            this.lands[i][i2].status = 'claimed';
-            this.lands[i][i2].previousOwnerId = null;
+            land.owner = previousOwner;
+            land.status = 'claimed';
+            land.previousOwnerId = null;
           } else {
-            this.lands[i][i2].owner = null;
-            this.lands[i][i2].status = null;
-            this.lands[i][i2].previousOwnerId = null;
+            land.owner = null;
+            land.status = null;
+            land.previousOwnerId = null;
           }
-        } else if (this.lands[i][i2].status === 'claimed') {
-          if(this.lands[i][i2].owner.id === killer.id){
-            this.lands[i][i2].owner = null;
-            this.lands[i][i2].previousOwnerId = null;
-            this.lands[i][i2].status = null;
+        } else if (land.status === 'claimed') {
+          if(land.owner.id === killer.id){
+            land.owner = null;
+            land.previousOwnerId = null;
+            land.status = null;
 
           } else{
-            this.lands[i][i2].owner = killer;
-            this.lands[i][i2].previousOwnerId = null;
+            land.owner = killer;
+            land.previousOwnerId = null;
           }
         }
       }
     }
 
-    const targetIndex = this.players.findIndex((p) => p.id === target.id);
     const newPos = this.getRandomSpawnPosition();
 
-
-    this.players[targetIndex].isMoving = false;
-    this.players[targetIndex].position = newPos;
-    this.players[targetIndex].conqueredPercentage = 0;
-    this.players[targetIndex].direction = 'south';
-    this.claimInitialLands(target.id, newPos)
+    target.isMoving = false;
+    target.position = newPos;
+    target.conqueredPercentage = 0;
+    target.direction = 'south';
+    this.claimInitialLands(target, newPos)
   }
 
   private generateSquareBoard(size: number): Array<Array<GameLand>> {

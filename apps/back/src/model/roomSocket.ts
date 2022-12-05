@@ -61,8 +61,8 @@ export class RoomSocket extends Room {
       position: pos,
     });
 
+    this.game.claimInitialLands(newPlayer, pos)
     this.game.players.push(newPlayer);
-    this.game.claimInitialLands(newPlayer.id, pos)
   }
 
   private onPlayerLeave(socket: Socket) {
@@ -72,10 +72,11 @@ export class RoomSocket extends Room {
     }
 
     const playerIndex = this.game.players.findIndex((p) => p.id === socket.id);
+    const player = this.game.players[playerIndex]
 
-    this.game.resetPlayerTakenLands(playerIndex)
+    this.game.resetPlayerTakenLands(player)
 
-    this.availableColors.unshift(this.game.players[playerIndex].color);
+    this.availableColors.unshift(player.color);
     this.game.players.splice(playerIndex, 1);
   }
 
