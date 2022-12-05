@@ -183,13 +183,15 @@ export class GameTable extends Game {
       if (currentPos.x === newPos.x && currentPos.y === newPos.y) continue;
 
       const nextLand = this.getLandFromPosition(newPos);
-      if (nextLand.owner) this.killPlayer(this.players[i], nextLand.owner);
 
-      if (
-        nextLand.status === 'contesting' &&
-        nextLand.owner?.id === this.players[i].id
-      )
-        continue;
+      if (nextLand.owner && nextLand.status === 'contesting') {
+        const nextLandOwnerId = nextLand.owner.id
+        
+        this.killPlayer(this.players[i], nextLand.owner);
+
+        if (this.players[i].id === nextLandOwnerId) continue 
+
+      }
 
       this.contestLand(i, currentPos);
       this.players[i].position = newPos;
@@ -250,8 +252,15 @@ export class GameTable extends Game {
             this.lands[i][i2].previousOwnerId = null;
           }
         } else if (this.lands[i][i2].status === 'claimed') {
-          this.lands[i][i2].owner = killer;
-          this.lands[i][i2].previousOwnerId = null;
+          if(this.lands[i][i2].owner.id === killer.id){
+            this.lands[i][i2].owner = null;
+            this.lands[i][i2].previousOwnerId = null;
+            this.lands[i][i2].status = null;
+
+          } else{
+            this.lands[i][i2].owner = killer;
+            this.lands[i][i2].previousOwnerId = null;
+          }
         }
       }
     }
@@ -259,10 +268,12 @@ export class GameTable extends Game {
     const targetIndex = this.players.findIndex((p) => p.id === target.id);
     const newPos = this.getRandomSpawnPosition();
 
+
     this.players[targetIndex].isMoving = false;
     this.players[targetIndex].position = newPos;
     this.players[targetIndex].conqueredPercentage = 0;
     this.players[targetIndex].direction = 'south';
+    this.claimInitialLands(target.id, newPos)
   }
 
   private generateSquareBoard(size: number): Array<Array<GameLand>> {
