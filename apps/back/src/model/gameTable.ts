@@ -2,11 +2,11 @@ import {
   emitEvent,
   Game,
   GameStatus,
-  Land,
   PlayerMovement,
 } from '@bandeirantes/events';
 import type { Namespace, Socket } from 'socket.io';
 import { Player } from './player';
+import { GameLand } from "./gameLand"
 
 type GameTableConstructor = Pick<Game, 'id' | 'gameOverTime'> & {
   size: number;
@@ -17,6 +17,7 @@ export class GameTable extends Game {
   readonly size: number;
   private readonly socketRoom: Namespace;
   players: Array<Player>;
+  lands: Array<Array<GameLand>>
   tickInterval: NodeJS.Timer | undefined;
   timeInterval: NodeJS.Timer | undefined;
 
@@ -33,8 +34,15 @@ export class GameTable extends Game {
     this.status = 'waiting';
   }
 
-  contestLand(playerIndex: number, landCoords: { x: number; y: number }) {
+  private contestLand(playerIndex: number, landCoords: { x: number; y: number }) {
     const player = this.players[playerIndex]
+    const land = this.lands[landCoords.y][landCoords.x]
+
+    if(land.owner &&land.owner.id === player.id && land.status !== null) return
+
+    if(land.owner && land.owner.id !== player.id){
+      this.lands[landCoords.y][landCoords.x].previousOwnerId = land.owner.id
+    }
 
     this.lands[landCoords.y][landCoords.x].owner = player
     this.lands[landCoords.y][landCoords.x].status = "contesting"
@@ -163,25 +171,30 @@ export class GameTable extends Game {
     for (let i = 0; i < this.lands.length; i++){
       for (let i2 = 0; i2 < this.lands[i].length; i2++){
         if (this.lands[i][i2].owner?.id === playerId) {
-          this.lands[i][i2].owner = null
-          this.lands[i][i2].status = null
+          if(this.lands[i][i2].previousOwnerId){
+            const previousOwner = this.players.find( p => p.id === this.lands[i][i2].previousOwnerId)
+
+            this.lands[i][i2].owner = previousOwner
+            this.lands[i][i2].status = "claimed"
+            this.lands[i][i2].previousOwnerId = null
+          }else{
+            this.lands[i][i2].owner = null
+            this.lands[i][i2].status = null
+            this.lands[i][i2].previousOwnerId = null
+          }
         }
       }
     }
   }
 
-  private generateSquareBoard(size: number): Array<Array<Land>> {
-    const board: Array<Array<Land>> = [];
+  private generateSquareBoard(size: number): Array<Array<GameLand>> {
+    const board: Array<Array<GameLand>> = [];
 
     for (let i = 0; i < size; i++) {
-      const line: Array<Land> = [];
+      const line: Array<GameLand> = [];
 
       for (let i2 = 0; i2 < size; i2++) {
-        line.push({
-          id: `${i}-${i2}`,
-          owner: null,
-          status: null,
-        });
+        line.push(new GameLand(`${i}-${i2}`));
       }
 
       board.push(line);
