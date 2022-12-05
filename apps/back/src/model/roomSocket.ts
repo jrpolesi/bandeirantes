@@ -7,6 +7,7 @@ import { Player } from './player';
 interface RoomSocketConstructor extends Omit<Room, 'gameId' | 'hasPassword'> {
   password: string | null;
   size: number;
+  gameOverTime: Date
 }
 
 export class RoomSocket extends Room {
@@ -39,7 +40,7 @@ export class RoomSocket extends Room {
     const game = new GameTable({
       id: '0',
       size: this.size,
-      gameOverTime: new Date(Date.now() + 1000 * 60 * 3),
+      gameOverTime: data.gameOverTime,
       socketRoom: this.socketRoom,
     });
 

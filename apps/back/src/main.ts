@@ -42,7 +42,8 @@ const rooms: Array<RoomSocket> = [
       name: 'Main Room',
       password: null,
       playerCount: 0,
-      size: 20
+      size: 20,
+      gameOverTime: new Date(Date.now() + 1000 * 60 * 3)
     },
     io
   ),
@@ -53,7 +54,8 @@ const rooms: Array<RoomSocket> = [
       name: 'Com senha',
       password: "senha",
       playerCount: 0,
-      size: 10
+      size: 10,
+      gameOverTime: new Date(Date.now() + 1000 * 60 * 3)
     },
     io
   ),

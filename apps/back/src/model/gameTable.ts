@@ -19,7 +19,6 @@ export class GameTable extends Game {
   players: Array<Player>;
   lands: Array<Array<GameLand>>
   tickInterval: NodeJS.Timer | undefined;
-  timeInterval: NodeJS.Timer | undefined;
 
   constructor(data: GameTableConstructor) {
     super();
@@ -51,14 +50,9 @@ export class GameTable extends Game {
   changeGameStatus(newStatus: GameStatus) {
     if (this.status === 'waiting' && newStatus === 'running') {
       this.tickInterval = this.createTickInterval(4);
-      this.timeInterval = setInterval(this.tickTimeFunction.bind(this), 1000);
     } else if (this.status === 'running' && newStatus === 'finished') {
       if (this.tickInterval) {
         clearInterval(this.tickInterval);
-        this.tickInterval = undefined;
-      }
-      if (this.timeInterval) {
-        clearInterval(this.timeInterval);
         this.tickInterval = undefined;
       }
     }
@@ -72,7 +66,7 @@ export class GameTable extends Game {
     return setInterval(this.tickFunction.bind(this), ms);
   }
 
-  private tickTimeFunction() {
+  private endGameFunction() {
     if (this.gameOverTime.getTime() > new Date().getTime()) return;
     this.changeGameStatus('finished');
   }
@@ -156,6 +150,8 @@ export class GameTable extends Game {
       this.contestLand(i, currentPos)
       this.players[i].position = newPos;
     }
+
+    this.endGameFunction()
 
     emitEvent('update_game', this.socketRoom as any, {
       id: this.id,
