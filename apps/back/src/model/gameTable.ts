@@ -151,8 +151,9 @@ export class GameTable extends Game {
       const currentPos = this.players[i].position;
       const newPos = this.getNewPosition(i);
 
-      this.contestLand(i, currentPos)
+      if (currentPos.x === newPos.x && currentPos.y === newPos.y) continue
 
+      this.contestLand(i, currentPos)
       this.players[i].position = newPos;
     }
 
