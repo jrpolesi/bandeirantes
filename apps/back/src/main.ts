@@ -42,7 +42,7 @@ const rooms: Array<RoomSocket> = [
       name: 'Main Room',
       password: null,
       playerCount: 0,
-      size:10
+      size: 20
     },
     io
   ),
@@ -53,7 +53,7 @@ const rooms: Array<RoomSocket> = [
       name: 'Com senha',
       password: "senha",
       playerCount: 0,
-      size:10
+      size: 10
     },
     io
   ),

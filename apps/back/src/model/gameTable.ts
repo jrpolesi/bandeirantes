@@ -35,7 +35,7 @@ export class GameTable extends Game {
 
   changeGameStatus(newStatus: GameStatus) {
     if (this.status === 'waiting' && newStatus === 'running') {
-      this.tickInterval = this.createTickInterval(2);
+      this.tickInterval = this.createTickInterval(4);
       this.timeInterval = setInterval(this.tickTimeFunction.bind(this), 1000);
     } else if (this.status === 'running' && newStatus === 'finished') {
       if (this.tickInterval) {
@@ -106,7 +106,6 @@ export class GameTable extends Game {
       if (position.y === 0) return newPosition;
       newPosition.y = position.y - 1;
     } else if (direction === 'south') {
-      console.log(position.y, this.size);
       if (position.y >= this.size - 1) return newPosition;
       newPosition.y = position.y + 1;
     } else if (direction === 'west') {

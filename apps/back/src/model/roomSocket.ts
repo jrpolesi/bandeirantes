@@ -14,6 +14,7 @@ export class RoomSocket extends Room {
   readonly size: number;
   game: GameTable;
   password: string | null;
+  availableColors: Array<string>
 
   constructor(data: RoomSocketConstructor, io: Server) {
     super();
@@ -25,10 +26,19 @@ export class RoomSocket extends Room {
     this.playerCount = 0;
     this.size = data.size;
     this.socketRoom = io.of(`/room/${this.id}`);
+    this.availableColors = [
+      "green",
+      "yellow",
+      "red",
+      "purple",
+      "blue",
+      "orange",
+      "cyan"
+    ]
 
     const game = new GameTable({
       id: '0',
-      size: 10,
+      size: this.size,
       gameOverTime: new Date(Date.now() + 1000 * 60 * 3),
       socketRoom: this.socketRoom,
     });
@@ -40,12 +50,24 @@ export class RoomSocket extends Room {
 
   private onPlayerLeave(socket: Socket){
     socket._cleanup();
+    if(!socket.disconnected){
+      socket.disconnect(true)
+    }
 
     const playerIndex = this.game.players.findIndex(
       (p) => p.id === socket.id
     );
-    
+
+    this.availableColors.unshift(this.game.players[playerIndex].color)
     this.game.players.splice(playerIndex, 1);
+  }
+
+  private getRandomColor(){
+    const colorIndex = Math.trunc(Math.random() * this.availableColors.length)
+    const color = this.availableColors[colorIndex]
+    this.availableColors.splice(colorIndex)
+
+    return color
   }
 
   listenEvents() {
@@ -94,12 +116,12 @@ export class RoomSocket extends Room {
       const newPlayer = new Player({
         id: socket.id,
         name,
-        color: 'red',
+        color: this.getRandomColor(),
         direction: 'south',
         conqueredPercentage: 0,
         position: {
-          x: 5,
-          y: Math.trunc(Math.random() * 5),
+          x: Math.trunc(Math.random() * (this.size - 1)),
+          y: Math.trunc(Math.random() * (this.size - 1)),
         },
       });
 
