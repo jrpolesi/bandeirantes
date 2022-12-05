@@ -50,24 +50,8 @@ export class RoomSocket extends Room {
   }
 
   private spawnPlayer(socket: Socket, name: string) {
-    const pos = {
-      x: 0,
-      y: 0,
-    };
-
-    const firstAxis = Math.round(Math.random()) ? 'y' : 'x';
-    const secondAxis = firstAxis === 'x' ? 'y' : 'x';
-    const atMinimum = !!Math.round(Math.random());
-
-    if (atMinimum) pos[firstAxis] = 1;
-    else pos[firstAxis] = this.size - 2;
-
-    let secondAxisIndex = Math.trunc(Math.random() * (this.size - 1));
-    if (secondAxisIndex === 0) secondAxisIndex++;
-    else if (secondAxisIndex === this.size - 1) secondAxisIndex--;
-
-    pos[secondAxis] = secondAxisIndex;
-
+    const pos = this.game.getRandomSpawnPosition()
+    
     const newPlayer = new Player({
       id: socket.id,
       name,
