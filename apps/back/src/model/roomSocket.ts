@@ -1,14 +1,10 @@
-import {
-  emitEvent,
-  onEvent, Room
-} from '@bandeirantes/events';
-import type { Namespace, Server } from 'socket.io';
+import { emitEvent, onEvent, Room } from '@bandeirantes/events';
+import type { Namespace, Server, Socket } from 'socket.io';
 import { logger } from '../utils/logger';
 import { GameTable } from './gameTable';
 import { Player } from './player';
 
-interface RoomSocketConstructor
-  extends Omit<Omit<Room, 'gameId'>, 'hasPassword'> {
+interface RoomSocketConstructor extends Omit<Room, 'gameId' | 'hasPassword'> {
   password: string | null;
   size: number;
 }
@@ -33,13 +29,23 @@ export class RoomSocket extends Room {
     const game = new GameTable({
       id: '0',
       size: 10,
-      gameOverTime: new Date(Date.now() + (1000 * 60) * 3),
-      socketRoom: this.socketRoom
+      gameOverTime: new Date(Date.now() + 1000 * 60 * 3),
+      socketRoom: this.socketRoom,
     });
 
     this.game = game;
 
     this.listenEvents();
+  }
+
+  private onPlayerLeave(socket: Socket){
+    socket._cleanup();
+
+    const playerIndex = this.game.players.findIndex(
+      (p) => p.id === socket.id
+    );
+    
+    this.game.players.splice(playerIndex, 1);
   }
 
   listenEvents() {
@@ -71,23 +77,19 @@ export class RoomSocket extends Room {
         });
 
         return socket.disconnect(true);
+      } else {
+        emitEvent('join_room_response', socket, {
+          message: `You entered room:"${this.name}"`,
+          succeeded: true,
+        });
       }
 
-      emitEvent('join_room_response', socket, {
-        message: `You entered room:"${this.name}"`,
-        succeeded: true,
-      });
 
-      logger.info(`Room ${this.name}: User ${socket.id} entered into room.`);
+      socket.on('disconnect', () => this.onPlayerLeave(socket));
 
-      socket.on('disconnect', () => {
-        socket._cleanup();
-
-        const playerIndex = this.game.players.findIndex(
-          (p) => p.id === socket.id
-        );
-        this.game.players.splice(playerIndex, 1);
-      });
+      onEvent('player_movement', socket, (playerMovement) =>
+        this.game.onPlayerMovement(socket, playerMovement)
+      );
 
       const newPlayer = new Player({
         id: socket.id,
@@ -103,52 +105,17 @@ export class RoomSocket extends Room {
 
       this.game.players.push(newPlayer);
 
-      onEvent('player_movement', socket, ({ direction, isMoving }) => {
-        const playerIndex = this.game.players.findIndex(
-          (p) => p.id === socket.id
-        );
-        const currentDirection = this.game.players[playerIndex].direction;
-
-        if(direction === currentDirection) return
-
-        if(typeof isMoving === "boolean"){
-          this.game.players[playerIndex].isMoving = isMoving;
-        }
-
-        if (!direction) return;
-        if (currentDirection === 'north' && direction === 'south') return
-        if (currentDirection === 'east' && direction === 'west') return;
-
-        this.game.players[playerIndex].direction = direction;
-
-        const nextPos = this.game.getNewPosition(playerIndex)
-        const currentPos = this.game.players[playerIndex].position
-
-        if (nextPos.y === currentPos.y && nextPos.x === currentPos.x){
-          return emitEvent("game_error", socket, {
-            code: "0",
-            message: "Unable to go back"
-          })
-        }
-
-        emitEvent("update_game", this.socketRoom as any, {
-          gameOverTime: this.game.gameOverTime,
-          id: this.game.id,
-          lands: this.game.lands,
-          players: this.game.players.map( ({isMoving:_, ...rest}) => (rest)),
-          status: this.game.status
-        }) //! Enviar apenas para o socket
-      });
-
-      this.game.changeGameStatus("running")
+      this.game.changeGameStatus('running');
 
       emitEvent('update_game', this.socketRoom as any, {
         gameOverTime: this.game.gameOverTime,
         id: this.game.id,
         lands: this.game.lands,
-        players: this.game.players.map( ({isMoving:_, ...rest}) => (rest)),
-        status: this.game.status
+        players: this.game.players.map(({ isMoving: _, ...rest }) => rest),
+        status: this.game.status,
       });
+
+      logger.info(`Room ${this.name}: User ${socket.id} entered into room.`);
     });
   }
 }

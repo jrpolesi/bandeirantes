@@ -1,5 +1,11 @@
-import { emitEvent, Game, GameStatus, Land } from '@bandeirantes/events';
-import { Namespace } from 'socket.io';
+import {
+  emitEvent,
+  Game,
+  GameStatus,
+  Land,
+  PlayerMovement,
+} from '@bandeirantes/events';
+import type { Namespace, Socket } from 'socket.io';
 import { Player } from './player';
 
 type GameTableConstructor = Pick<Game, 'id' | 'gameOverTime'> & {
@@ -31,9 +37,18 @@ export class GameTable extends Game {
     if (this.status === 'waiting' && newStatus === 'running') {
       this.tickInterval = this.createTickInterval(2);
       this.timeInterval = setInterval(this.tickTimeFunction.bind(this), 1000);
-
-      this.status = 'running';
+    } else if (this.status === 'running' && newStatus === 'finished') {
+      if (this.tickInterval) {
+        clearInterval(this.tickInterval);
+        this.tickInterval = undefined;
+      }
+      if (this.timeInterval) {
+        clearInterval(this.timeInterval);
+        this.tickInterval = undefined;
+      }
     }
+
+    this.status = newStatus;
   }
 
   private createTickInterval(ticksPerSecond: number) {
@@ -44,10 +59,42 @@ export class GameTable extends Game {
 
   private tickTimeFunction() {
     if (this.gameOverTime.getTime() > new Date().getTime()) return;
-    if (this.tickInterval) clearInterval(this.tickInterval);
-    if (this.timeInterval) clearInterval(this.timeInterval);
-
     this.changeGameStatus('finished');
+  }
+
+  onPlayerMovement(socket: Socket, { direction, isMoving }: PlayerMovement) {
+    const playerIndex = this.players.findIndex((p) => p.id === socket.id);
+    const currentDirection = this.players[playerIndex].direction;
+
+    if (direction === currentDirection) return;
+
+    if (typeof isMoving === 'boolean') {
+      this.players[playerIndex].isMoving = isMoving;
+    }
+
+    if (!direction) return;
+    if (currentDirection === 'north' && direction === 'south') return;
+    if (currentDirection === 'east' && direction === 'west') return;
+
+    this.players[playerIndex].direction = direction;
+
+    const nextPos = this.getNewPosition(playerIndex);
+    const currentPos = this.players[playerIndex].position;
+
+    if (nextPos.y === currentPos.y && nextPos.x === currentPos.x) {
+      return emitEvent('game_error', socket, {
+        code: '0',
+        message: 'Unable to go back',
+      });
+    }
+
+    emitEvent('update_game', socket as any, {
+      gameOverTime: this.gameOverTime,
+      id: this.id,
+      lands: this.lands,
+      players: this.players.map(({ isMoving: _, ...rest }) => rest),
+      status: this.status,
+    });
   }
 
   getNewPosition(playerIndex: number) {
