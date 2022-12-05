@@ -87,6 +87,8 @@ export class RoomSocket extends Room {
 
     const playerIndex = this.game.players.findIndex((p) => p.id === socket.id);
 
+    this.game.resetPlayerTakenLands(playerIndex)
+
     this.availableColors.unshift(this.game.players[playerIndex].color);
     this.game.players.splice(playerIndex, 1);
   }

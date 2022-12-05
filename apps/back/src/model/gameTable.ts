@@ -147,6 +147,19 @@ export class GameTable extends Game {
     });
   }
 
+  resetPlayerTakenLands(playerIndex: number){
+    const playerId = this.players[playerIndex].id
+
+    for (let i = 0; i < this.lands.length; i++){
+      for (let i2 = 0; i2 < this.lands[i].length; i2++){
+        if (this.lands[i][i2].owner?.id === playerId) {
+          this.lands[i][i2].owner = null
+          this.lands[i][i2].status = null
+        }
+      }
+    }
+  }
+
   private generateSquareBoard(size: number): Array<Array<Land>> {
     const board: Array<Array<Land>> = [];
 
