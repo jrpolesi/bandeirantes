@@ -77,6 +77,7 @@ export class RoomSocket extends Room {
     });
 
     this.game.players.push(newPlayer);
+    this.game.claimInitialLands(newPlayer.id, pos)
   }
 
   private onPlayerLeave(socket: Socket) {

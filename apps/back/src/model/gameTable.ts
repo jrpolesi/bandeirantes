@@ -126,6 +126,16 @@ export class GameTable extends Game {
     return newPosition;
   }
 
+  claimInitialLands(playerId: string, coords: {x: number, y:number}){
+    const player = this.players.find( p => p.id === playerId)
+    for(let i = coords.y - 1; i <= coords.y + 1; i++){
+      for(let i2 = coords.x - 1; i2 <= coords.x + 1; i2++){
+        this.lands[i][i2].owner = player
+        this.lands[i][i2].status = "claimed"
+      }
+    }    
+  }
+
   private tickFunction() {
     for (let i = 0; i < this.players.length; i++) {
       if (!this.players[i].isMoving) continue;
