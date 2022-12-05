@@ -105,6 +105,18 @@ export class GameTable extends Game {
     return pos;
   }
 
+  claimContestedLands(player: Player){
+    for(const landY of this.lands){
+      for(const land of landY){
+        if(land.owner?.id !== player.id) continue
+        if(land.status !== "contesting") continue
+
+        land.status = "claimed"
+        land.previousOwnerId = null
+      }
+    }
+  }
+
   onPlayerMovement(socket: Socket, { direction, isMoving }: PlayerMovement) {
     const player = this.players.find((p) => p.id === socket.id);
 
@@ -129,6 +141,8 @@ export class GameTable extends Game {
         message: 'Unable to go back',
       });
     }
+
+    // player.vertices.push(currentPos)
 
     emitEvent('update_game', socket as any, {
       gameOverTime: this.gameOverTime,
@@ -179,6 +193,7 @@ export class GameTable extends Game {
 
       if (currentPos.x === newPos.x && currentPos.y === newPos.y) continue;
 
+      const currentLand = this.lands[currentPos.y][currentPos.x]
       const nextLand = this.getLandFromPosition(newPos);
 
       if (nextLand.owner && nextLand.status === 'contesting') {
@@ -187,6 +202,9 @@ export class GameTable extends Game {
         this.killPlayer(player, target);
 
         if (player.id === target.id) continue 
+      }
+      else if(nextLand.owner && nextLand.status === 'claimed' && currentLand.status !== nextLand.status){
+        if(nextLand.owner.id === player.id) this.claimContestedLands(player)
       }
 
       this.contestLand(player, currentPos);
