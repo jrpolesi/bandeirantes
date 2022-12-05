@@ -8,7 +8,7 @@ export type JoinRoomResponse = {
   message: string;
 };
 
-export class PlayerGame {
+export class Bandeirante {
   id: string;
   name: string;
   color: string;
@@ -21,20 +21,20 @@ export class PlayerGame {
 }
 
 export class PlayerCredentials {
-  name: PlayerGame['name'];
-  color: PlayerGame['color'];
+  name: Bandeirante['name'];
+  color: Bandeirante['color'];
 }
 
 export class Land {
   id: string;
   status: LandStatus;
-  owner: null | PlayerGame;
+  owner: null | Bandeirante;
 }
 
 export class Game {
   id: string;
   status: GameStatus;
-  players: Array<PlayerGame>;
+  players: Array<Bandeirante>;
   lands: Array<Array<Land>>;
   gameOverTime: Date;
 }

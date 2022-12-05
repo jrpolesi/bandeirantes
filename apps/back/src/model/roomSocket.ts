@@ -1,19 +1,23 @@
-import type { Server, Namespace} from "socket.io"
-import { Room, Game, PlayerGame, Land, emitEvent, onEvent } from "@bandeirantes/events"
-import { logger } from "../utils/logger"
-import { setInterval } from "node:timers/promises";
+import {
+  emitEvent,
+  onEvent, Room
+} from '@bandeirantes/events';
+import type { Namespace, Server } from 'socket.io';
+import { logger } from '../utils/logger';
+import { GameTable } from './gameTable';
+import { Player } from './player';
 
-interface RoomSocketConstructor extends Omit<Omit<Room, 'gameId'>, 'hasPassword'> {
-  password: string | null
-  size: number
+interface RoomSocketConstructor
+  extends Omit<Omit<Room, 'gameId'>, 'hasPassword'> {
+  password: string | null;
+  size: number;
 }
 
 export class RoomSocket extends Room {
   private socketRoom: Namespace;
-  readonly size: number
-  game: Game;
-  password: string | null
-  interval: AsyncIterable<() => void>
+  readonly size: number;
+  game: GameTable;
+  password: string | null;
 
   constructor(data: RoomSocketConstructor, io: Server) {
     super();
@@ -21,91 +25,33 @@ export class RoomSocket extends Room {
     this.id = data.id;
     this.name = data.name;
     this.password = data.password;
-    this.maxPlayers = 5;
+    this.maxPlayers = data.maxPlayers;
     this.playerCount = 0;
-    this.size = data.size
-    
-    const game = new Game();
-    game.id = '0';
-    game.lands = this.generateSquareBoard(data.size);
-    game.players = [];
-    game.status = 'waiting';
-    game.gameOverTime = new Date();
-
-    this.game = game;
+    this.size = data.size;
     this.socketRoom = io.of(`/room/${this.id}`);
 
-    this.listenEvents()
-  }
+    const game = new GameTable({
+      id: '0',
+      size: 10,
+      gameOverTime: new Date(Date.now() + (1000 * 60) * 3),
+      socketRoom: this.socketRoom
+    });
 
-  private generateSquareBoard(size: number): Array<Array<Land>> {
-    const board: Array<Array<Land>> = [];
+    this.game = game;
 
-    for (let i = 0; i < size; i++) {
-      const line: Array<Land> = [];
-
-      for (let i2 = 0; i2 < size; i2++) {
-        line.push({
-          id: `${i}-${i2}`,
-          owner: null,
-          status: null,
-        })
-      }
-
-      board.push(line);
-    }
-
-    return board;
-  }
-
-  createInterval(ticksPerSecond: number) {
-    const ms = ticksPerSecond / 1000
-
-    this.interval = setInterval(ms, this.tickFunction)
-  }
-
-  tickFunction() {
-    for (let i = 0; i < this.game.players.length; i++) {
-      let { position, direction } = this.game.players[i]
-
-      if(direction === "north") {
-        if(position.y === 0) continue
-        position.y --
-      }
-
-      if(direction === "south") {
-        if(position.y === this.size - 1) continue
-        position.y ++
-      }
-
-      if(direction === "west") {
-        if(position.x === 0) continue
-        position.x --
-      }
-
-      if(direction === "east") {
-        if(position.x === this.size - 1) continue
-        position.x ++
-      }
-
-      this.game.players[i].position = position
-      
-    }
-
-
-    emitEvent("update_game", this.socketRoom as any, this.game)
+    this.listenEvents();
   }
 
   listenEvents() {
     this.socketRoom.on('connection', (socket) => {
-      const { password, name } = socket.handshake.auth
+      const { password, name } = socket.handshake.auth;
 
-      if (this.game.players.length >= this.maxPlayers){
+      if (this.game.players.length >= this.maxPlayers) {
         emitEvent('join_room_response', socket, {
           message: 'Room have reached the maximum amount of players',
           succeeded: false,
         });
-  
+
         return socket.disconnect(true);
       }
 
@@ -117,13 +63,13 @@ export class RoomSocket extends Room {
 
         return socket.disconnect(true);
       }
-      
+
       if (!name || name.length < 1) {
         emitEvent('join_room_response', socket, {
           message: 'Name must have at least one character',
           succeeded: false,
         });
-  
+
         return socket.disconnect(true);
       }
 
@@ -133,31 +79,76 @@ export class RoomSocket extends Room {
       });
 
       logger.info(`Room ${this.name}: User ${socket.id} entered into room.`);
-      
-      emitEvent("update_game", socket, this.game)
 
+      socket.on('disconnect', () => {
+        socket._cleanup();
 
-      socket.on("disconnect", () => {
-        socket._cleanup()
-        
-        const playerIndex = this.game.players.findIndex( p => p.id === socket.id)
-        this.game.players.splice(playerIndex, 1)
-      })
+        const playerIndex = this.game.players.findIndex(
+          (p) => p.id === socket.id
+        );
+        this.game.players.splice(playerIndex, 1);
+      });
 
-      const newPlayer = new PlayerGame()
-      newPlayer.id = socket.id
-      newPlayer.color = "red"
-      newPlayer.name = name
-      newPlayer.direction = "south"
-      newPlayer.conqueredPercentage = 0
-      newPlayer.position = {
-        x: 0,
-        y: 0
-      }
+      const newPlayer = new Player({
+        id: socket.id,
+        name,
+        color: 'red',
+        direction: 'south',
+        conqueredPercentage: 0,
+        position: {
+          x: 5,
+          y: Math.trunc(Math.random() * 5),
+        },
+      });
 
+      this.game.players.push(newPlayer);
 
-      onEvent("player_movement", socket, (direction) => {})
+      onEvent('player_movement', socket, ({ direction, isMoving }) => {
+        const playerIndex = this.game.players.findIndex(
+          (p) => p.id === socket.id
+        );
+        const currentDirection = this.game.players[playerIndex].direction;
 
+        if(direction === currentDirection) return
+
+        if(typeof isMoving === "boolean"){
+          this.game.players[playerIndex].isMoving = isMoving;
+        }
+
+        if (!direction) return;
+        if (currentDirection === 'north' && direction === 'south') return
+        if (currentDirection === 'east' && direction === 'west') return;
+
+        this.game.players[playerIndex].direction = direction;
+
+        const nextPos = this.game.getNewPosition(playerIndex)
+        const currentPos = this.game.players[playerIndex].position
+
+        if (nextPos.y === currentPos.y && nextPos.x === currentPos.x){
+          return emitEvent("game_error", socket, {
+            code: "0",
+            message: "Unable to go back"
+          })
+        }
+
+        emitEvent("update_game", this.socketRoom as any, {
+          gameOverTime: this.game.gameOverTime,
+          id: this.game.id,
+          lands: this.game.lands,
+          players: this.game.players.map( ({isMoving:_, ...rest}) => (rest)),
+          status: this.game.status
+        }) //! Enviar apenas para o socket
+      });
+
+      this.game.changeGameStatus("running")
+
+      emitEvent('update_game', this.socketRoom as any, {
+        gameOverTime: this.game.gameOverTime,
+        id: this.game.id,
+        lands: this.game.lands,
+        players: this.game.players.map( ({isMoving:_, ...rest}) => (rest)),
+        status: this.game.status
+      });
     });
   }
 }
