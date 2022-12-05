@@ -1,8 +1,9 @@
 import {
+  type Bandeirante,
+  type PlayerMovement,
   emitEvent,
   Game,
   GameStatus,
-  PlayerMovement,
 } from '@bandeirantes/events';
 import type { Namespace, Socket } from 'socket.io';
 import { Player } from './player';
@@ -69,6 +70,14 @@ export class GameTable extends Game {
   private endGameFunction() {
     if (this.gameOverTime.getTime() > new Date().getTime()) return;
     this.changeGameStatus('finished');
+  }
+
+  private getLandFromPosition({y, x}:{y: number, x: number}){
+    for(let i = 0; i < this.lands.length; i++){
+      for(let i2 = 0; i2 < this.lands[i].length; i2++){
+        if(i === y && i2 === x) return this.lands[i][i2]
+      }
+    }
   }
 
   onPlayerMovement(socket: Socket, { direction, isMoving }: PlayerMovement) {
@@ -147,6 +156,11 @@ export class GameTable extends Game {
 
       if (currentPos.x === newPos.x && currentPos.y === newPos.y) continue
 
+      const nextLand = this.getLandFromPosition(newPos)
+      if(nextLand.owner) this.killPlayer(this.players[i], nextLand.owner)
+
+      if(nextLand.status === "contesting" && nextLand.owner?.id === this.players[i].id) continue
+
       this.contestLand(i, currentPos)
       this.players[i].position = newPos;
     }
@@ -179,6 +193,31 @@ export class GameTable extends Game {
             this.lands[i][i2].status = null
             this.lands[i][i2].previousOwnerId = null
           }
+        }
+      }
+    }
+  }
+
+  private killPlayer(killer: Player, target: Bandeirante){
+    for (let i = 0; i < this.lands.length; i++){
+      for (let i2 = 0; i2 < this.lands[i].length; i2++){
+        if (this.lands[i][i2].owner?.id !== target.id) continue
+
+        if(this.lands[i][i2].status === "contesting"){
+          if(this.lands[i][i2].previousOwnerId){
+            const previousOwner = this.players.find( p => p.id === this.lands[i][i2].previousOwnerId)
+
+            this.lands[i][i2].owner = previousOwner
+            this.lands[i][i2].status = "claimed"
+            this.lands[i][i2].previousOwnerId = null
+          }else{
+            this.lands[i][i2].owner = null
+            this.lands[i][i2].status = null
+            this.lands[i][i2].previousOwnerId = null
+          }
+        }else if(this.lands[i][i2].status === "claimed"){
+          this.lands[i][i2].owner = killer
+          this.lands[i][i2].previousOwnerId = null
         }
       }
     }

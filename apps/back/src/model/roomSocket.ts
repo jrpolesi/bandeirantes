@@ -13,8 +13,8 @@ interface RoomSocketConstructor extends Omit<Room, 'gameId' | 'hasPassword'> {
 export class RoomSocket extends Room {
   private socketRoom: Namespace;
   readonly size: number;
+  readonly password: string | null;
   game: GameTable;
-  password: string | null;
   availableColors: Array<string>;
 
   constructor(data: RoomSocketConstructor, io: Server) {
