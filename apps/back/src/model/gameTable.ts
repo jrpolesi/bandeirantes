@@ -33,6 +33,13 @@ export class GameTable extends Game {
     this.status = 'waiting';
   }
 
+  contestLand(playerIndex: number, landCoords: { x: number; y: number }) {
+    const player = this.players[playerIndex]
+
+    this.lands[landCoords.y][landCoords.x].owner = player
+    this.lands[landCoords.y][landCoords.x].status = "contesting"
+  }
+
   changeGameStatus(newStatus: GameStatus) {
     if (this.status === 'waiting' && newStatus === 'running') {
       this.tickInterval = this.createTickInterval(4);
@@ -123,7 +130,12 @@ export class GameTable extends Game {
     for (let i = 0; i < this.players.length; i++) {
       if (!this.players[i].isMoving) continue;
 
-      this.players[i].position = this.getNewPosition(i);
+      const currentPos = this.players[i].position;
+      const newPos = this.getNewPosition(i);
+
+      this.contestLand(i, currentPos)
+
+      this.players[i].position = newPos;
     }
 
     emitEvent('update_game', this.socketRoom as any, {
