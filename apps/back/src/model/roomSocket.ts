@@ -14,7 +14,7 @@ export class RoomSocket extends Room {
   readonly size: number;
   game: GameTable;
   password: string | null;
-  availableColors: Array<string>
+  availableColors: Array<string>;
 
   constructor(data: RoomSocketConstructor, io: Server) {
     super();
@@ -27,14 +27,14 @@ export class RoomSocket extends Room {
     this.size = data.size;
     this.socketRoom = io.of(`/room/${this.id}`);
     this.availableColors = [
-      "green",
-      "yellow",
-      "red",
-      "purple",
-      "blue",
-      "orange",
-      "cyan"
-    ]
+      'green',
+      'yellow',
+      'red',
+      'purple',
+      'blue',
+      'orange',
+      'cyan',
+    ];
 
     const game = new GameTable({
       id: '0',
@@ -48,26 +48,55 @@ export class RoomSocket extends Room {
     this.listenEvents();
   }
 
-  private onPlayerLeave(socket: Socket){
+  private spawnPlayer(socket: Socket, name: string) {
+    const pos = {
+      x: 0,
+      y: 0,
+    };
+
+    const firstAxis = Math.round(Math.random()) ? 'y' : 'x';
+    const secondAxis = firstAxis === 'x' ? 'y' : 'x';
+    const atMinimum = !!Math.round(Math.random());
+
+    if (atMinimum) pos[firstAxis] = 1;
+    else pos[firstAxis] = this.size - 2;
+
+    let secondAxisIndex = Math.trunc(Math.random() * (this.size - 1));
+    if (secondAxisIndex === 0) secondAxisIndex++;
+    else if (secondAxisIndex === this.size - 1) secondAxisIndex--;
+
+    pos[secondAxis] = secondAxisIndex;
+
+    const newPlayer = new Player({
+      id: socket.id,
+      name,
+      color: this.getRandomColor(),
+      direction: 'south',
+      conqueredPercentage: 0,
+      position: pos,
+    });
+
+    this.game.players.push(newPlayer);
+  }
+
+  private onPlayerLeave(socket: Socket) {
     socket._cleanup();
-    if(!socket.disconnected){
-      socket.disconnect(true)
+    if (!socket.disconnected) {
+      socket.disconnect(true);
     }
 
-    const playerIndex = this.game.players.findIndex(
-      (p) => p.id === socket.id
-    );
+    const playerIndex = this.game.players.findIndex((p) => p.id === socket.id);
 
-    this.availableColors.unshift(this.game.players[playerIndex].color)
+    this.availableColors.unshift(this.game.players[playerIndex].color);
     this.game.players.splice(playerIndex, 1);
   }
 
-  private getRandomColor(){
-    const colorIndex = Math.trunc(Math.random() * this.availableColors.length)
-    const color = this.availableColors[colorIndex]
-    this.availableColors.splice(colorIndex)
+  private getRandomColor() {
+    const colorIndex = Math.trunc(Math.random() * this.availableColors.length);
+    const color = this.availableColors[colorIndex];
+    this.availableColors.splice(colorIndex);
 
-    return color
+    return color;
   }
 
   listenEvents() {
@@ -106,26 +135,13 @@ export class RoomSocket extends Room {
         });
       }
 
-
       socket.on('disconnect', () => this.onPlayerLeave(socket));
 
       onEvent('player_movement', socket, (playerMovement) =>
         this.game.onPlayerMovement(socket, playerMovement)
       );
 
-      const newPlayer = new Player({
-        id: socket.id,
-        name,
-        color: this.getRandomColor(),
-        direction: 'south',
-        conqueredPercentage: 0,
-        position: {
-          x: Math.trunc(Math.random() * (this.size - 1)),
-          y: Math.trunc(Math.random() * (this.size - 1)),
-        },
-      });
-
-      this.game.players.push(newPlayer);
+      this.spawnPlayer(socket, name);
 
       this.game.changeGameStatus('running');
 
