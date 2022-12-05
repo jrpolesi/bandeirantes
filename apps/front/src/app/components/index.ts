@@ -1,2 +1,2 @@
-export * from './Table';
-export * from './RoomList'
+export * from './Game';
+export * from './Lobby';

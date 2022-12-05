@@ -7,7 +7,7 @@ export function Table({ game }: TableProps) {
   return (
     <div>
       {game.lands.map((lineOfLands, i) => (
-        <TableLine key={i} lands={lineOfLands} />
+        <TableLine key={i} lands={lineOfLands} currentLine={i} players={game.players} />
       ))}
     </div>
   );

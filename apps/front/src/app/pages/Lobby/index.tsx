@@ -8,6 +8,7 @@ export function Lobby() {
   const { saveSocket } = useGameContext();
   const [rooms, setRooms] = useState<Array<Room>>();
   const [name, setName] = useState<string>("");
+  const [nameError, setNameError] = useState<string>("")
 
   useEffect(() => {
     async function getRoomsFromApi() {
@@ -40,6 +41,7 @@ export function Lobby() {
         value={name}
         onChange={(event) => setName(event.target.value)}
       />
+      {}
       {rooms && <RoomList rooms={rooms} handleJoinRoom={joinRoom} />}
     </>
   );

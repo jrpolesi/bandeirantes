@@ -2,7 +2,9 @@ import {
   BandeirantesSocket,
   emitEvent,
   Game,
+  GameError,
   JoinRoom,
+  JoinRoomResponse,
   ListenEvents,
   onEvent,
   PlayerDirection,
@@ -58,7 +60,8 @@ class GameSocketEvents {
 export function GameProvider({ children }: PropsWithChildren<{}>) {
   const [socket, setSocket] = useState<BandeirantesSocket>();
   const [game, setGame] = useState<Game>();
-  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [joinRoomResponse, setJoinRoomResponse] = useState<JoinRoomResponse>();
+  const [gameError, setGameError] = useState<GameError>()
 
   const socketEvents = useMemo(
     () => socket && new GameSocketEvents(socket),
@@ -71,8 +74,13 @@ export function GameProvider({ children }: PropsWithChildren<{}>) {
         console.log(socket);
 
         socketEvents.onJoinRoomResponse((response) => {
-          setIsConnected(response.succeeded);
+          console.log(response)
+          setJoinRoomResponse(response);
         });
+
+        socketEvents.onGameError((error) => {
+          setGameError(error)
+        })
 
         socketEvents.onUpdateGame((game) => {
           setGame(game);
@@ -94,7 +102,7 @@ export function GameProvider({ children }: PropsWithChildren<{}>) {
 
   return (
     <GameContext.Provider
-      value={{ game, saveSocket, isConnected, setIsConnected, changeDirection }}
+      value={{ game, saveSocket, joinRoomResponse, setIsConnected: setJoinRoomResponse, changeDirection }}
     >
       {children}
     </GameContext.Provider>

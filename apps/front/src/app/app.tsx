@@ -8,13 +8,15 @@ import { GlobalStyle, ResetCSS } from './styles';
 library.add(fas, far);
 
 export function App() {
-  const { isConnected, game } = useGameContext();
+  const { joinRoomResponse, game } = useGameContext();
+
+  console.log(joinRoomResponse)
 
   return (
     <>
       <ResetCSS />
       <GlobalStyle />
-      {isConnected ? <GamePage game={game} /> : <Lobby />}
+      {joinRoomResponse?.succeeded ? <GamePage game={game} /> : <Lobby />}
     </>
   );
 }

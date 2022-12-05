@@ -6,7 +6,7 @@ export function Game({ game }: any) {
   const { setIsConnected, changeDirection } = useGameContext();
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
-      console.log(event.key === ' ');
+
       switch (event.key) {
         case 'w':
         case 'ArrowUp':
@@ -37,6 +37,8 @@ export function Game({ game }: any) {
   }, []);
 
   if (game) {
+    console.log(game)
+
     return (
       <>
         <Table game={game} />
