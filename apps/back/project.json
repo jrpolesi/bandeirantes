@@ -8,6 +8,7 @@
       "executor": "@nx/webpack:webpack",
       "outputs": ["{options.outputPath}"],
       "options": {
+        "isolatedConfig": false,
         "target": "node",
         "compiler": "tsc",
         "outputPath": "dist/apps/back",
