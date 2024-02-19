@@ -36,6 +36,7 @@
     "@nx/node": "18.0.4",
     "@nx/react": "18.0.4",
     "@nx/web": "18.0.4",
+    "@nx/webpack": "^18.0.4",
     "@nx/workspace": "18.0.4",
     "@testing-library/react": "14.0.0",
     "@types/jest": "29.4.4",
