@@ -11,6 +11,7 @@ pub struct Player {
     pub color_hex_code: String,
     pub direction: Direction,
     pub is_moving: bool,
+    pub position: (usize, usize),
 }
 
 impl Player {

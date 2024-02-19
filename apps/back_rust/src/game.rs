@@ -14,7 +14,7 @@ pub struct Game<'a> {
     max_players: u8,
 }
 
-impl Game<'_> {
+impl<'g> Game<'g> {
     pub fn new(squared_size: u8, tps: u8, password: Option<String>, max_players: u8) -> Self {
         let range = 1..=squared_size * squared_size;
 
@@ -50,6 +50,19 @@ impl Game<'_> {
     }
 
     pub fn player_leave(&mut self, player: &Player) -> Result<(), &str> {
+
+        // Iterates over all lands, and remove the leaving player's ownership
+        self.lands.iter_mut().for_each(|l|{
+            match l.owner{
+                Some(owner) => {
+                    if owner.socket_id == player.socket_id{
+                        l.owner = None;
+                    }
+                },
+                None => {},
+            }
+        });
+
         let player_index = self
             .player_list
             .iter()
@@ -68,6 +81,23 @@ impl Game<'_> {
         self.player_list.iter().find(|p| p.socket_id == socket_id)
     }
 
+    pub fn spawn_player_random_location(&self, player: &Player) -> Result<(), &str> {
+        todo!()
+    }
+
+    pub fn player_killing_victim(&mut self, killer: &'g Player, victim: &Player) -> () {
+        self.lands.iter_mut().for_each(|l|{
+            match l.owner {
+                Some(owner) => {
+                    if owner.socket_id == victim.socket_id {
+                        l.owner = Some(&killer);
+                    }
+                },
+                None => {},
+            };
+        });
+    }
+
     fn get_land(&self, x: usize, y: usize) -> Option<&Land> {
         let lands_len = self.lands.len();
         let maximum_axis_size = lands_len / 2;
@@ -78,7 +108,7 @@ impl Game<'_> {
 
         let index = (y * self.squared_size as usize) + x;
 
-        return Some(&self.lands[index]);
+        Some(&self.lands[index])
     }
 }
 
