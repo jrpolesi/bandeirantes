@@ -1,3 +1,5 @@
+use std::fmt::Error;
+
 use crate::player::Player;
 
 pub struct Land<'a> {
@@ -9,14 +11,16 @@ pub struct Game<'a> {
     player_list: Vec<Player>,
     password: Option<String>,
     lands: Vec<Land<'a>>,
+    tps: u8,
+    max_players: u8,
 }
 
 impl Game<'_> {
-    pub fn new(squared_size: u8, password: Option<String>) -> Self {
+    pub fn new(squared_size: u8, tps: u8, password: Option<String>, max_players: u8) -> Self {
         let range = 1..=squared_size;
 
         let lands = range
-            .map(|x| Land {
+            .map(|_| Land {
                 owner: None,
                 contestant: None,
             })
@@ -24,15 +28,25 @@ impl Game<'_> {
 
         Self {
             lands,
+            tps,
             password,
+            max_players,
             player_list: vec![],
         }
     }
 
-    pub fn player_join(&mut self, player: Player, password: Option<String>) -> () {
-        &self.password.is_some();
+    pub fn player_join(&mut self, player: Player, password: Option<String>) -> Result<(), &str> {
+        if self.password.is_some() && password != self.password {
+            return Err("Password mismatch");
+        }
 
-        todo!()
+        if self.player_list.len() >= self.max_players as usize {
+            return Err("Max players reached");
+        }
+
+        self.player_list.push(player);
+
+        Ok(())
     }
 
     pub fn player_leave(&mut self, player: &Player) -> () {
@@ -43,5 +57,3 @@ impl Game<'_> {
         todo!()
     }
 }
-
-
