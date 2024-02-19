@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+// WIP
+
+message Bandeirante {
+  uint32 id = 1;
+  string name = 2;
+  string color = 3;
+}
+
+
