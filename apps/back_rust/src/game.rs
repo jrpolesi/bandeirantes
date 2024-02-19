@@ -1,5 +1,3 @@
-use std::fmt::Error;
-
 use crate::player::Player;
 
 pub struct Land<'a> {
@@ -62,6 +60,12 @@ impl Game<'_> {
             }
             None => Err("Player not found"),
         }
+    }
+
+    pub fn get_player_by_socket_id(&self, socket_id: String) -> Option<&Player> {
+        self.player_list
+            .iter()
+            .find(|p| p.socket_id == socket_id)
     }
 
     fn get_land(&self, x: usize, y: usize) -> Option<&Land> {
