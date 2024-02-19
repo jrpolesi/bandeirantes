@@ -49,8 +49,19 @@ impl Game<'_> {
         Ok(())
     }
 
-    pub fn player_leave(&mut self, player: &Player) -> () {
-        todo!()
+    pub fn player_leave(&mut self, player: &Player) -> Result<(), &str> {
+        let player_index = self
+            .player_list
+            .iter()
+            .position(|p| p.socket_id == player.socket_id);
+
+        match player_index {
+            Some(index) => {
+                self.player_list.remove(index);
+                Ok(())
+            }
+            None => Err("Player not found"),
+        }
     }
 
     fn get_land(&self, x: usize, y: usize) -> Option<&Land> {
