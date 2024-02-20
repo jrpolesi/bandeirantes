@@ -1,4 +1,4 @@
-use crate::player::Player;
+use crate::player::{Direction, Player};
 
 pub struct Land<'a> {
     owner: Option<&'a Player>,
@@ -50,16 +50,23 @@ impl<'g> Game<'g> {
     }
 
     pub fn player_leave(&mut self, player: &Player) -> Result<(), &str> {
-
         // Iterates over all lands, and remove the leaving player's ownership
-        self.lands.iter_mut().for_each(|l|{
-            match l.owner{
+        self.lands.iter_mut().for_each(|l| {
+            match l.owner {
                 Some(owner) => {
-                    if owner.socket_id == player.socket_id{
+                    if owner.socket_id == player.socket_id {
                         l.owner = None;
                     }
-                },
-                None => {},
+                }
+                None => {}
+            }
+            match l.contestant {
+                Some(contestant) => {
+                    if contestant.socket_id == player.socket_id {
+                        l.contestant = None;
+                    }
+                }
+                None => {}
             }
         });
 
@@ -86,19 +93,19 @@ impl<'g> Game<'g> {
     }
 
     pub fn player_killing_victim(&mut self, killer: &'g Player, victim: &Player) -> () {
-        self.lands.iter_mut().for_each(|l|{
+        self.lands.iter_mut().for_each(|l| {
             match l.owner {
                 Some(owner) => {
                     if owner.socket_id == victim.socket_id {
                         l.owner = Some(&killer);
                     }
-                },
-                None => {},
+                }
+                None => {}
             };
         });
     }
 
-    fn get_land(&self, x: usize, y: usize) -> Option<&Land> {
+    fn get_land(&'g self, x: usize, y: usize) -> Option<&Land> {
         let lands_len = self.lands.len();
         let maximum_axis_size = lands_len / 2;
 
@@ -108,7 +115,52 @@ impl<'g> Game<'g> {
 
         let index = (y * self.squared_size as usize) + x;
 
-        Some(&self.lands[index])
+        self.lands.get(index)
+    }
+
+    fn move_player(&mut self, player: &'g Player) -> Result<(), &str> {
+        if player.position.0 <= 0 && player.position.1 >= self.squared_size as usize {
+            return Ok(());
+        }
+
+        let (x, y): (usize, usize) = match player.direction {
+            Direction::north => (player.position.0 - 1, player.position.1),
+            Direction::south => (player.position.0 + 1, player.position.1),
+            Direction::west => (player.position.0, player.position.1 - 1),
+            Direction::east => (player.position.0, player.position.1 + 1),
+            _ => return Err("Invalid direction"),
+        };
+
+        // let next_land_position
+        let land_target = &self.get_land(x, y);
+
+        match land_target {
+            Some(l) => {
+                match l.contestant {
+                    Some(contestant_player) => {
+                        self.player_killing_victim(player, contestant_player);
+                    }
+                    None => {
+                        // l.contestant = Some(player);
+                    }
+                }
+            }
+            None => {
+                return Err("Land not found");
+            }
+        };
+
+        // player.position = (x, y);
+
+        Ok(())
+    }
+
+    fn tick(&mut self) -> () {
+        self.player_list.iter_mut().for_each(|player| {
+            self.move_player(player);
+        });
+
+        todo!()
     }
 }
 
